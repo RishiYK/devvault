@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevVault — CLI Snippet Manager</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #111318;
+      --border: #1e2230;
+      --cyan: #00e5c8;
+      --green: #39ff8a;
+      --yellow: #ffd166;
+      --red: #ff4d6d;
+      --blue: #4d9fff;
+      --dim: #4a5270;
+      --text: #c8cfe8;
+      --white: #eef0fb;
+      --glow-c: 0 0 24px rgba(0, 229, 200, .35);
+      --glow-g: 0 0 24px rgba(57, 255, 138, .3);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Noise grain overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: .6;
+    }
+
+    /* ── Layout ── */
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 72px;
+      position: relative;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      border: 1px solid rgba(0, 229, 200, .3);
+      padding: 6px 16px;
+      border-radius: 100px;
+      margin-bottom: 28px;
+      animation: fadeUp .6s ease both;
+    }
+
+    .hero h1 {
+      font-size: clamp(52px, 9vw, 96px);
+      font-weight: 800;
+      line-height: .95;
+      letter-spacing: -.03em;
+      color: var(--white);
+      margin-bottom: 20px;
+      animation: fadeUp .6s .1s ease both;
+    }
+
+    .hero h1 span {
+      color: var(--cyan);
+    }
+
+    .hero p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--dim);
+      max-width: 420px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+      animation: fadeUp .6s .2s ease both;
+    }
+
+    .badges {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeUp .6s .3s ease both;
+    }
+
+    .badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      background: var(--surface);
+    }
+
+    .badge.hi {
+      border-color: rgba(0, 229, 200, .4);
+      color: var(--cyan);
+      background: rgba(0, 229, 200, .06);
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Terminal ── */
+    .terminal-wrap {
+      margin-bottom: 48px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, .6), var(--glow-c);
+      animation: fadeUp .7s .4s ease both;
+      opacity: 0;
+    }
+
+    .terminal-bar {
+      background: #161820;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-r {
+      background: #ff5f57;
+    }
+
+    .dot-y {
+      background: #febc2e;
+    }
+
+    .dot-g {
+      background: #28c840;
+    }
+
+    .terminal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--dim);
+      margin-left: 8px;
+    }
+
+    .terminal-body {
+      background: #0d0f14;
+      padding: 28px 32px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      line-height: 1.9;
+      min-height: 220px;
+      position: relative;
+    }
+
+    /* ── Demo tabs ── */
+    .demo-tabs {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      animation: fadeUp .6s .35s ease both;
+      opacity: 0;
+    }
+
+    .tab {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--dim);
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .tab:hover {
+      border-color: rgba(0, 229, 200, .4);
+      color: var(--text);
+    }
+
+    .tab.active {
+      background: rgba(0, 229, 200, .1);
+      border-color: rgba(0, 229, 200, .5);
+      color: var(--cyan);
+    }
+
+    /* ── Colored terminal text ── */
+    .t-cyan {
+      color: var(--cyan);
+    }
+
+    .t-green {
+      color: var(--green);
+    }
+
+    .t-yellow {
+      color: var(--yellow);
+    }
+
+    .t-red {
+      color: var(--red);
+    }
+
+    .t-dim {
+      color: var(--dim);
+    }
+
+    .t-white {
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .t-bold {
+      font-weight: 700;
+    }
+
+    .t-prompt {
+      color: var(--green);
+    }
+
+    .line {
+      display: block;
+    }
+
+    .line.hidden {
+      display: none;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--cyan);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+
+    /* ── Features grid ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 64px;
+      animation: fadeUp .6s .5s ease both;
+      opacity: 0;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      transition: border-color .2s, transform .2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(0, 229, 200, .3);
+      transform: translateY(-3px);
+    }
+
+    .feature-icon {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    .feature-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--dim);
+      line-height: 1.6;
+    }
+
+    /* ── Install block ── */
+    .install-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px;
+      animation: fadeUp .6s .6s ease both;
+      opacity: 0;
+    }
+
+    .install-block h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 20px;
+    }
+
+    .code-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: #0a0c10;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+
+    .code-line:hover {
+      border-color: rgba(0, 229, 200, .4);
+    }
+
+    .code-line span {
+      color: var(--dim);
+      font-size: 11px;
+    }
+
+    .code-line .cmd {
+      color: var(--cyan);
+    }
+
+    .copied-toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0, 229, 200, .15);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 10px 24px;
+      border-radius: 100px;
+      opacity: 0;
+      transition: all .3s;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .copied-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    @keyframes typeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="page">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-tag">Portfolio Project · CLI Tool</div>
+      <h1>Dev<span>Vault</span></h1>
+      <p>Your personal code snippet manager.<br>Save, search & retrieve from the terminal.</p>
+      <div class="badges">
+        <div class="badge hi">Python 3.6+</div>
+        <div class="badge">Zero Dependencies</div>
+        <div class="badge">Local JSON Storage</div>
+        <div class="badge">ANSI Colors</div>
+        <div class="badge">~200 Lines</div>
+      </div>
+    </div>
+
+    <!-- Terminal Demo -->
+    <div class="section-label">Live Demo</div>
+
+    <div class="demo-tabs" id="tabs">
+      <button class="tab active" data-demo="add">devvault add</button>
+      <button class="tab" data-demo="list">devvault list</button>
+      <button class="tab" data-demo="search">devvault search</button>
+      <button class="tab" data-demo="stats">devvault stats</button>
+    </div>
+
+    <div class="terminal-wrap" id="terminal">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+        <div class="terminal-title">bash — devvault</div>
+      </div>
+      <div class="terminal-body" id="terminal-body"></div>
+    </div>
+
+    <!-- Features -->
+    <div class="section-label">Features</div>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">📝</div>
+        <h3>Add Snippets</h3>
+        <p>Interactively save code with title, language, tags & description.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Fuzzy Search</h3>
+        <p>Search across title, tags, language and even the code content itself.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎨</div>
+        <h3>Colored Output</h3>
+        <p>ANSI color-coded terminal UI — no external libraries needed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h3>Local Storage</h3>
+        <p>All data lives in ~/.devvault.json — portable, backupable, yours.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Stats View</h3>
+        <p>Visual bar chart of your most-used languages and top tags.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <h3>Zero Dependencies</h3>
+        <p>Uses only Python's standard library. Works anywhere Python runs.</p>
+      </div>
+    </div>
+
+    <!-- Install -->
+    <div class="section-label">Get Started</div>
+    <div class="install-block">
+      <h2>Run it in 3 commands</h2>
+      <div class="code-line" onclick="copy(this, 'git clone https://https://github.com/RishiYK/devvault.git')">
+        <span class="cmd">git clone https://github.com/RishiYK/devvault.git</span>
+        <span>copy</span>
+      </div>
+      <div class="code-line" onclick="copy(this, 'cd devvault')">
+        <span class="cmd">cd devvault</span>
+        <span>copy</span>
+      </div>
+      <div class="code-line" onclick="copy(this, 'python devvault.py add')">
+        <span class="cmd">python devvault.py add</span>
+        <span>copy</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="copied-toast" id="toast">Copied to clipboard!</div>
+
+  <script>
+    // ── Demo content for each tab ─────────────────────────────────────────────
+
+    const demos = {
+      add: [
+        { text: '$ python devvault.py add', cls: 't-prompt', delay: 0 },
+        { text: '', delay: 100 },
+        { text: '  ✦ Add a new snippet', cls: 't-white t-bold', delay: 200 },
+        { text: '', delay: 300 },
+        { text: '  Title: <span class="t-cyan">Flatten a nested list</span>', delay: 500 },
+        { text: '  Language: <span class="t-cyan">python</span>', delay: 700 },
+        { text: '  Description: <span class="t-cyan">Turns [[1,2],[3,4]] into [1,2,3,4]</span>', delay: 900 },
+        { text: '  Tags: <span class="t-cyan">list,flatten,comprehension</span>', delay: 1100 },
+        { text: '  Paste your code below. Type \'END\' when done:', cls: 't-dim', delay: 1300 },
+        { text: '', delay: 1400 },
+        { text: '  <span class="t-cyan">[x for xs in nested for x in xs]</span>', delay: 1600 },
+        { text: '  END', cls: 't-dim', delay: 1800 },
+        { text: '', delay: 1900 },
+        { text: '  <span class="t-green">✔ Snippet #4 \'Flatten a nested list\' saved!</span>', delay: 2100 },
+      ],
+      list: [
+        { text: '$ python devvault.py list', cls: 't-prompt', delay: 0 },
+        { text: '', delay: 100 },
+        { text: '  ✦ <span class="t-white t-bold">4 snippet(s) in your vault</span>', delay: 300 },
+        { text: '', delay: 400 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 500 },
+        { text: '  <span class="t-white t-bold">[1]</span>  <span class="t-white t-bold">Reverse a list</span>   <span class="t-green">python</span>', delay: 600 },
+        { text: '  <span class="t-yellow">#list</span>  <span class="t-yellow">#trick</span>  <span class="t-yellow">#slicing</span>', delay: 700 },
+        { text: '  <span class="t-dim">Added: 2026-02-18 09:12</span>', delay: 750 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 800 },
+        { text: '  <span class="t-white t-bold">[2]</span>  <span class="t-white t-bold">Read a file line by line</span>   <span class="t-green">python</span>', delay: 900 },
+        { text: '  <span class="t-yellow">#file</span>  <span class="t-yellow">#io</span>', delay: 1000 },
+        { text: '  <span class="t-dim">Added: 2026-02-19 14:30</span>', delay: 1050 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 1100 },
+        { text: '  <span class="t-white t-bold">[3]</span>  <span class="t-white t-bold">Debounce function</span>   <span class="t-green">javascript</span>', delay: 1200 },
+        { text: '  <span class="t-yellow">#js</span>  <span class="t-yellow">#performance</span>  <span class="t-yellow">#events</span>', delay: 1300 },
+        { text: '  <span class="t-dim">Added: 2026-02-20 10:05</span>', delay: 1350 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 1400 },
+        { text: '  <span class="t-white t-bold">[4]</span>  <span class="t-white t-bold">Flatten a nested list</span>   <span class="t-green">python</span>', delay: 1500 },
+        { text: '  <span class="t-yellow">#list</span>  <span class="t-yellow">#flatten</span>  <span class="t-yellow">#comprehension</span>', delay: 1600 },
+        { text: '  <span class="t-dim">Added: 2026-02-20 11:42</span>', delay: 1650 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 1700 },
+      ],
+      search: [
+        { text: '$ python devvault.py search list', cls: 't-prompt', delay: 0 },
+        { text: '', delay: 100 },
+        { text: '  ✦ <span class="t-white t-bold">2 result(s) for \'<span class="t-cyan">list</span>\'</span>', delay: 300 },
+        { text: '', delay: 400 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 500 },
+        { text: '  <span class="t-white t-bold">[1]</span>  <span class="t-white t-bold">Reverse a list</span>   <span class="t-green">python</span>', delay: 600 },
+        { text: '  <span class="t-yellow">#list</span>  <span class="t-yellow">#trick</span>  <span class="t-yellow">#slicing</span>', delay: 700 },
+        { text: '  <span class="t-dim">Turns a list backwards using slice notation</span>', delay: 750 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 800 },
+        { text: '  <span class="t-white t-bold">[4]</span>  <span class="t-white t-bold">Flatten a nested list</span>   <span class="t-green">python</span>', delay: 900 },
+        { text: '  <span class="t-yellow">#list</span>  <span class="t-yellow">#flatten</span>  <span class="t-yellow">#comprehension</span>', delay: 1000 },
+        { text: '  <span class="t-dim">Turns [[1,2],[3,4]] into [1,2,3,4]</span>', delay: 1050 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 1100 },
+      ],
+      stats: [
+        { text: '$ python devvault.py stats', cls: 't-prompt', delay: 0 },
+        { text: '', delay: 100 },
+        { text: '  ✦ <span class="t-white t-bold">DevVault Stats</span>', delay: 300 },
+        { text: '', delay: 400 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 500 },
+        { text: '  Total snippets : <span class="t-cyan">4</span>', delay: 600 },
+        { text: '  Languages used : <span class="t-cyan">2</span>', delay: 700 },
+        { text: '', delay: 750 },
+        { text: '  <span class="t-white t-bold">Languages:</span>', delay: 800 },
+        { text: '  python       <span class="t-green">███</span>  3', delay: 1000 },
+        { text: '  javascript   <span class="t-green">█</span>  1', delay: 1200 },
+        { text: '', delay: 1300 },
+        { text: '  <span class="t-white t-bold">Top tags:</span>', delay: 1400 },
+        { text: '  <span class="t-yellow">#list</span>             2 snippet(s)', delay: 1550 },
+        { text: '  <span class="t-yellow">#trick</span>            1 snippet(s)', delay: 1650 },
+        { text: '  <span class="t-yellow">#file</span>             1 snippet(s)', delay: 1750 },
+        { text: '  <span class="t-yellow">#js</span>               1 snippet(s)', delay: 1850 },
+        { text: '  ──────────────────────────────────────────────────', cls: 't-dim', delay: 1950 },
+      ]
+    };
+
+    // ── Renderer ─────────────────────────────────────────────────────────────────
+
+    let timers = [];
+
+    function clearTimers() {
+      timers.forEach(clearTimeout);
+      timers = [];
+    }
+
+    function renderDemo(key) {
+      clearTimers();
+      const body = document.getElementById('terminal-body');
+      body.innerHTML = '';
+
+      const lines = demos[key];
+      lines.forEach((l, i) => {
+        const t = setTimeout(() => {
+          const span = document.createElement('span');
+          span.classList.add('line');
+          span.innerHTML = l.text || '&nbsp;';
+          if (l.cls) l.cls.split(' ').forEach(c => { if (c) span.classList.add(c); });
+          body.appendChild(span);
+
+          // add cursor on last line
+          if (i === lines.length - 1) {
+            const c = document.createElement('span');
+            c.classList.add('cursor');
+            body.appendChild(c);
+          }
+        }, l.delay);
+        timers.push(t);
+      });
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────────
+
+    document.getElementById('tabs').addEventListener('click', e => {
+      const btn = e.target.closest('.tab');
+      if (!btn) return;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      renderDemo(btn.dataset.demo);
+    });
+
+    // ── Copy helper ───────────────────────────────────────────────────────────────
+
+    function copy(el, text) {
+      navigator.clipboard.writeText(text).catch(() => { });
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // ── Boot ──────────────────────────────────────────────────────────────────────
+
+    renderDemo('add');
+  </script>
+</body>
+
+</html>
