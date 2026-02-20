@@ -1,0 +1,11 @@
+# DevVault personal data - don't push your snippets to GitHub
+.devvault.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db
